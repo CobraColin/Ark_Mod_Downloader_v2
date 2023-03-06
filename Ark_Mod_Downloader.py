@@ -9,18 +9,23 @@ import struct
 import urllib.request
 import zipfile
 import threading
+from time import gmtime, strftime
 
 debug = True
 
-log_dir = os.path.join(os.getcwd(),str(os.times))
+time = strftime("%Y-%m-%d--%H-%M-%S", gmtime())
+log_dir = os.path.join(os.getcwd(),str(time))
 
 def create_log_dir():
     os.makedirs(log_dir)
-    
+
+if debug:
+    create_log_dir()
+
 def log(mes,id=1):
     if debug:
         if id==1:
-            print('log message: '+mes+'\n')
+            print('log message: '+mes)
         else:
             log_file = os.path.join(log_dir,id)
             if not os.path.isfile(log_file):
