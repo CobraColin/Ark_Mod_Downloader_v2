@@ -12,14 +12,26 @@ import threading
 
 debug = True
 
-def log(mes):
-    if debug:
-        print('log message: '+mes+'\n')
+log_dir = os.path.join(os.getcwd(),str(os.times))
 
+def create_log_dir():
+    os.makedirs(log_dir)
+    
+def log(mes,id=1):
+    if debug:
+        if id==1:
+            print('log message: '+mes+'\n')
+        else:
+            if not os.path.isfile(id):
+                open(id, "x")
+            with open(id,'a') as file:
+                if file.writable():
+                    file.write(mes)   
+            
 class ArkmodDownloader():
 
     def __init__(self, steamcmd, modids, working_dir, mod_update, modname, preserve=False,multithread=False):
-
+        
         # I not working directory provided, check if CWD has an ARK server.
         self.working_dir = working_dir
         if not working_dir:
@@ -47,13 +59,37 @@ class ArkmodDownloader():
 
         # If any issues happen in download and extract chain this returns false
         if modids:
+            successfully_installed_Mods = []
+            failed_to_install_Mods = []
+            threads =[]
+            def download_logic(mod):
+                print("\n\n\n\n\n[+] downloading mod " + mod)
+                download_dir = self.make_download_dir(mod)
+                if self.download_mod(mod,download_dir):
+                    successfully_installed_Mods.append(mod)
+                else:
+                    failed_to_install_Mods.append(mod)
+                    print("[x] Error downloading mod " + mod)
+                    
+
             for mod in modids:
-                if not self.download_mod(mod):
-                    print("[+] There was as problem downloading mod {}.  See above errors".format(str(mod)))
-                    #if self.move_mod(mod):
-                    #    print("[+] mod {} Installation Finished".format(str(mod)))
-                #else:
-                #   print("[+] There was as problem downloading mod {}.  See above errors".format(str(mod)))
+
+                for mod in self.installed_Mods:
+                    if self.multithread:
+                        t = threading.Thread(target=download_logic, args=(mod,))
+                        t.start()
+                        threads.append(t)
+                    else:
+                        download_logic(mod)
+                
+                for t in threads:
+                    t.join()
+
+                for succ_mod in successfully_installed_Mods:
+                    print(f'[+] successfully updated mod {succ_mod}')
+
+                for succ_mod in failed_to_install_Mods:
+                    print(f'[x] Failed to update mod {succ_mod}')
     
     def make_download_dir(self,modid):## it will add modid to the end of the temp ark mod downloader dir name
         return os.path.join(self.working_dir,f'.temp_ark_mod_downloader_{modid}')
@@ -155,6 +191,7 @@ class ArkmodDownloader():
             break
 
     def download_mod(self, modid,download_dir,preserve=False):
+        preserve = preserve or self.preserve
         if os.path.isdir(download_dir) and not self.preserve:
             shutil.rmtree(download_dir)
         """
@@ -173,7 +210,9 @@ class ArkmodDownloader():
         if preserve:
             args.append("validate")
         args.append("+quit")
+        
         output = str(subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        
         if not 'Success. Downloaded item' in output:
             return self.download_mod(modid,download_dir,True)
         if not os.path.isdir(download_dir):# checks if steamcmd made the download_dir if not then it failed to download
