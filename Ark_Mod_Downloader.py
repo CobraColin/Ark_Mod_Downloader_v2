@@ -41,7 +41,7 @@ class ArkmodDownloader():
         self.steamcmd = steamcmd  # Path to SteamCMD exe
 
         if not self.steamcmd_check():
-            print("SteamCMD Not Found And We Were Unable To Download It")
+            log("SteamCMD Not Found And We Were Unable To Download It")
             sys.exit(0)
             
         self.multithread = multithread
@@ -55,8 +55,8 @@ class ArkmodDownloader():
         self.prep_steamcmd()
 
         if mod_update:
-            print("[+] mod Update Is Selected.  Updating Your Existing Mods")
-            self.update_Mods()
+            log("[+] mod Update Is Selected.  Updating Your Existing Mods")
+            return self.update_Mods()
 
         # If any issues happen in download and extract chain this returns false
         if modids:
@@ -64,13 +64,13 @@ class ArkmodDownloader():
             failed_to_install_Mods = []
             threads =[]
             def download_logic(mod):
-                print("\n\n\n\n\n[+] downloading mod " + mod)
+                log("\n\n\n\n\n[+] downloading mod " + mod)
                 download_dir = self.make_download_dir(mod)
                 if self.download_mod(mod,download_dir):
                     successfully_installed_Mods.append(mod)
                 else:
                     failed_to_install_Mods.append(mod)
-                    print("[x] Error downloading mod " + mod)
+                    log("[x] Error downloading mod " + mod)
                     
 
             for mod in modids:
@@ -87,10 +87,10 @@ class ArkmodDownloader():
                     t.join()
 
                 for succ_mod in successfully_installed_Mods:
-                    print(f'[+] successfully updated mod {succ_mod}')
+                    log(f'[+] successfully updated mod {succ_mod}')
 
                 for succ_mod in failed_to_install_Mods:
-                    print(f'[x] Failed to update mod {succ_mod}')
+                    log(f'[x] Failed to update mod {succ_mod}')
     
     def make_download_dir(self,modid):## it will add modid to the end of the temp ark mod downloader dir name
         return os.path.join(self.working_dir,f'.temp_ark_mod_downloader_{modid}')
@@ -99,18 +99,18 @@ class ArkmodDownloader():
         return os.path.join(download_dir, r"steamapps", r"workshop", r"content", r"346110")
 
     def create_mod_name_txt(self, mod_folder, modid):
-        print(os.path.join(mod_folder, self.map_names[0] + " - " + modid + ".txt"))
+        log(os.path.join(mod_folder, self.map_names[0] + " - " + modid + ".txt"),modid)
         with open(os.path.join(mod_folder, self.map_names[0] + ".txt"), "w+") as f:
             f.write(modid)
 
     def working_dir_check(self):
-        print("[!] No working directory provided.  Checking Current Directory")
-        print("[!] " + os.getcwd())
+        log("[!] No working directory provided.  Checking Current Directory")
+        log("[!] " + os.getcwd())
         if os.path.isdir(os.path.join(os.getcwd(), "ShooterGame","Content")):
-            print("[+] Current Directory Has Ark Server.  Using The Current Directory")
+            log("[+] Current Directory Has Ark Server.  Using The Current Directory")
             self.working_dir = os.getcwd()
         else:
-            print("[x] Current Directory Does Not Contain An ARK Server. Aborting")
+            log("[x] Current Directory Does Not Contain An ARK Server. Aborting")
             sys.exit(0)
 
     def steamcmd_check(self):#it checks for the file called "steamcmd". create a shortcut on windows or a sym link in linux to steamcmd in the working dir
@@ -122,15 +122,15 @@ class ArkmodDownloader():
 
         # Check provided directory
         if self.steamcmd:
-            print("[+] Checking Provided Path For steamcmd")
+            log("[+] Checking Provided Path For steamcmd")
             if os.path.isfile(os.path.join(self.steamcmd, "steamcmd")):
                 self.steamcmd = os.path.join(self.steamcmd, "steamcmd")
-                print("[+] steamcmd Found At Provided Path")
+                log("[+] steamcmd Found At Provided Path")
                 return True
 
         # Check working directory
         if os.path.isfile(os.path.join(self.working_dir, "steamcmd")):
-            print("[+] Located steamcmd")
+            log("[+] Located steamcmd")
             self.steamcmd = os.path.join(self.working_dir, "steamcmd")
             return True
 
@@ -145,13 +145,13 @@ class ArkmodDownloader():
         failed_to_install_Mods = []
 
         def download_logic(mod):
-            print("\n\n\n\n\n[+] Updating mod " + mod)
+            log("\n\n\n\n\n[+] Updating mod " + mod)
             download_dir = self.make_download_dir(mod)
             if self.download_mod(mod,download_dir):
                 successfully_installed_Mods.append(mod)
             else:
                 failed_to_install_Mods.append(mod)
-                print("[x] Error Updating mod " + mod)
+                log("[x] Error Updating mod " + mod)
 
         if self.installed_Mods:
             threads =[]
@@ -167,12 +167,12 @@ class ArkmodDownloader():
                 t.join()
 
             for succ_mod in successfully_installed_Mods:
-                print(f'[+] successfully updated mod {succ_mod}')
+                log(f'[+] successfully updated mod {succ_mod}')
 
             for succ_mod in failed_to_install_Mods:
-                print(f'[x] Failed to update mod {succ_mod}')
+                log(f'[x] Failed to update mod {succ_mod}')
         else:
-            print("[+] No Installed Mods Found.  Skipping Update")
+            log("[+] No Installed Mods Found.  Skipping Update")
 
 
     def build_list_of_Mods(self):
@@ -181,7 +181,7 @@ class ArkmodDownloader():
         :return:
         """
         if not os.path.isdir(os.path.join(self.working_dir, "ShooterGame", "Content" , "Mods")):
-            print('[!] no Mods directory found')
+            log('[!] no Mods directory found')
             return
         for curdir, dirs, files in os.walk(os.path.join(self.working_dir, "ShooterGame", "Content" , "Mods")):
             for d in dirs:
@@ -200,7 +200,7 @@ class ArkmodDownloader():
         :return:
         """
         
-        print("[+] Starting Download of mod " + str(modid))
+        log("[+] Starting Download of mod " + str(modid),modid)
         args = []
         args.append(self.steamcmd)
         args.append(f"+force_install_dir {download_dir}") # added this to get a cleaner download.
@@ -217,7 +217,7 @@ class ArkmodDownloader():
         if not 'Success. Downloaded item' in output:
             return self.download_mod(modid,download_dir,True)
         if not os.path.isdir(download_dir):# checks if steamcmd made the download_dir if not then it failed to download
-            log('failed to download mod with steamcmd | aborting mod download')
+            log('failed to download mod with steamcmd | aborting mod download',modid)
             return False
         success = True if self.extract_mod(modid,download_dir) else False
         if os.path.isdir(download_dir) and not self.preserve: # remove the download_dir to get a clean download next time. if preserve is true it won't delete it
@@ -232,7 +232,7 @@ class ArkmodDownloader():
         :return: None
         """
 
-        print("[+] Extracting .z Files.")
+        log("[+] Extracting .z Files.",modid)
 
         try:
             for curdir, subdirs, files in os.walk(os.path.join(self.make_temp_mod_path(download_dir), modid, "WindowsNoEditor")):
@@ -243,21 +243,21 @@ class ArkmodDownloader():
                         dst = os.path.join(curdir, name)
                         uncompressed = os.path.join(curdir, file + ".uncompressed_size")
                         arkit.unpack(src, dst)
-                        #print("[+] Extracted " + file)
+                        #log("[+] Extracted " + file)
                         os.remove(src)
                         if os.path.isfile(uncompressed):
                             os.remove(uncompressed)
 
         except (arkit.UnpackException, arkit.SignatureUnpackException, arkit.CorruptUnpackException) as e:
-            print("[x] Unpacking .z files failed, aborting mod install")
-            log(e)
+            log("[x] Unpacking .z files failed, aborting mod install",modid)
+            log(e,modid)
             return False
 
         if self.create_mod_file(modid,download_dir):
             if self.move_mod(modid,download_dir):
                 return True
             else:
-                log('failed to move mod')
+                log('failed to move mod',modid)
                 return False
 
 
@@ -274,17 +274,17 @@ class ArkmodDownloader():
 
         # TODO Need to handle exceptions here   
         if not os.path.isdir(ark_mod_folder):
-            print("[+] Creating Directory: " + ark_mod_folder)
+            log("[+] Creating Directory: " + ark_mod_folder,modid)
             os.mkdir(ark_mod_folder)
 
         if os.path.isdir(output_dir):
             shutil.rmtree(output_dir)
 
-        print("[+] Moving mod Files To: " + output_dir)
+        log("[+] Moving mod Files To: " + output_dir,modid)
         shutil.copytree(source_dir, output_dir)
 
         if self.modname:
-            print("Creating mod Name File")
+            log("Creating mod Name File",modid)
             self.create_mod_name_txt(ark_mod_folder, modid)
 
         old_name = os.path.join(self.working_dir, "ShooterGame","Content", "Mods",modid,".mod")
@@ -306,7 +306,7 @@ class ArkmodDownloader():
         if not self.parse_base_info(modid,download_dir) or not self.parse_meta_data(modid,download_dir):
             return False
 
-        print("[+] Writing .mod File")
+        log("[+] Writing .mod File",modid)
         with open(os.path.join(self.make_temp_mod_path(download_dir), modid, r"WindowsNoEditor", r".mod"), "w+b") as f:
 
             modid = int(modid)
@@ -375,12 +375,12 @@ class ArkmodDownloader():
         :return: Dict
         """
 
-        print("[+] Collecting mod Meta Data From modmeta.info")
-        print("[+] Located The Following Meta Data:")
+        log("[+] Collecting mod Meta Data From modmeta.info",modid)
+        log("[+] Located The Following Meta Data:",modid)
 
         mod_meta = os.path.join(self.make_temp_mod_path(download_dir), modid, r"WindowsNoEditor", r"modmeta.info")
         if not os.path.isfile(mod_meta):
-            print("[x] Failed To Locate modmeta.info. Cannot continue without it.  Aborting")
+            log("[x] Failed To Locate modmeta.info. Cannot continue without it.  Aborting",modid)
             return False
 
         with open(mod_meta, "rb") as f:
@@ -414,7 +414,7 @@ class ArkmodDownloader():
 
                 # TODO This is a potential issue if there is a key but no value
                 if key and value:
-                    print("[!] " + key + ":" + value)
+                    log("[!] " + key + ":" + value)
                     self.meta_data[key] = value
 
         return True
@@ -422,12 +422,12 @@ class ArkmodDownloader():
 
     def parse_base_info(self, modid,download_dir):
 
-        print("[+] Collecting mod Details From mod.info")
+        log("[+] Collecting mod Details From mod.info",modid)
 
         mod_info = os.path.join(self.make_temp_mod_path(download_dir), modid, r"WindowsNoEditor", r"mod.info")
 
         if not os.path.isfile(mod_info):
-            print("[x] Failed to locate mod.info. Cannot Continue.  Aborting")
+            log("[x] Failed to locate mod.info. Cannot Continue.  Aborting",modid)
             return False
 
         with open(mod_info, "rb") as f:
@@ -455,8 +455,8 @@ def main():
     args = parser.parse_args()
 
     if not args.modids and not args.mod_update:
-        print("[x] No mod ID Provided and Update Not Selected.  Aborting")
-        print("[?] Please provide a mod ID to download or use --update to update your existing Mods")
+        log("[x] No mod ID Provided and Update Not Selected.  Aborting")
+        log("[?] Please provide a mod ID to download or use --update to update your existing Mods")
         sys.exit(0)
 
     ArkmodDownloader(args.steamcmd,
