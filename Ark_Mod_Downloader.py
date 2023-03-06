@@ -125,7 +125,7 @@ class ArkmodDownloader():
         :return: Bool
         """
 
-        # Check provided directory
+        # Check provided directory ADD CHECK FOR .LNK AND .EXE FILES
         if self.steamcmd:
             log("[+] Checking Provided Path For steamcmd")
             if os.path.isfile(os.path.join(self.steamcmd, "steamcmd")):
@@ -217,7 +217,7 @@ class ArkmodDownloader():
             args.append("validate")
         args.append("+quit")
         
-        output = str(subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8'))
+        output = str(subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8'))# stdout is not a sthing in win run needs to be call in win and more
         
         if not 'Success. Downloaded item' in output:
             return self.download_mod(modid,download_dir,True)
