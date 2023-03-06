@@ -22,9 +22,10 @@ def log(mes,id=1):
         if id==1:
             print('log message: '+mes+'\n')
         else:
-            if not os.path.isfile(id):
-                open(id, "x")
-            with open(id,'a') as file:
+            log_file = os.path.join(log_dir,id)
+            if not os.path.isfile(log_file):
+                open(log_file, "x")
+            with open(log_file,'a') as file:
                 if file.writable():
                     file.write(mes)   
             
