@@ -8,6 +8,7 @@ credit: https://github.com/barrycarey
 
 
 USAGE:
+
 --workingdir - (Optional) - This is the home directory of your ARK server
 
 --modids - The IDs of the mod you wish to download. Space separated list of Mod IDs to download
