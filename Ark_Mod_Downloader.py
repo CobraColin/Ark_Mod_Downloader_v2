@@ -10,11 +10,14 @@ import urllib.request
 import zipfile
 import threading
 from time import gmtime, strftime
+from subprocess import Popen, PIPE
 
 debug = True
 
 time = strftime("%Y-%m-%d--%H-%M-%S", gmtime())
 log_dir = os.path.join(os.getcwd(),str(time))
+temp_steamcmd_dir_name = '.temp_ark_mod_downloader_steamcmd'
+
 
 def create_log_dir():
     os.makedirs(log_dir)
@@ -27,13 +30,16 @@ def log(mes,id=1):
         if id==1:
             print('log message: '+mes)
         else:
+            print(mes)
             log_file = os.path.join(log_dir,id)
             if not os.path.isfile(log_file):
                 open(log_file, "x")
             with open(log_file,'a') as file:
                 if file.writable():
                     file.write(mes)   
-            
+
+is_windows = (os.name == 'nt')
+
 class ArkmodDownloader():
 
     def __init__(self, steamcmd, modids, working_dir, mod_update, modname, preserve=False,multithread=False):
@@ -57,7 +63,10 @@ class ArkmodDownloader():
         self.preserve = preserve
         self.download_dir = os.path.join(self.working_dir,'.temp_ark_mod_downloader')
         self.temp_mod_path = os.path.join(self.download_dir, r"steamapps", r"workshop", r"content", r"346110")
-        self.prep_steamcmd()
+        self.temp_steamcmd_dir = os.path.join(working_dir,temp_steamcmd_dir_name)
+        if not self.prep_steamcmd():
+            return 
+            log('error prepping steam. if you are on linux then this is not supposed to happen so report it(:')
 
         if mod_update:
             log("[+] mod Update Is Selected.  Updating Your Existing Mods")
@@ -97,6 +106,9 @@ class ArkmodDownloader():
                 for succ_mod in failed_to_install_Mods:
                     log(f'[x] Failed to update mod {succ_mod}')
     
+    def clean_up():
+        return
+    
     def make_download_dir(self,modid):## it will add modid to the end of the temp ark mod downloader dir name
         return os.path.join(self.working_dir,f'.temp_ark_mod_downloader_{modid}')
 
@@ -107,7 +119,7 @@ class ArkmodDownloader():
         log(os.path.join(mod_folder, self.map_names[0] + " - " + modid + ".txt"),modid)
         with open(os.path.join(mod_folder, self.map_names[0] + ".txt"), "w+") as f:
             f.write(modid)
-
+            
     def working_dir_check(self):
         log("[!] No working directory provided.  Checking Current Directory")
         log("[!] " + os.getcwd())
@@ -124,26 +136,69 @@ class ArkmodDownloader():
         If no path provided check TCAdmin path working dir.  If not located try to download SteamCMD.
         :return: Bool
         """
-
-        # Check provided directory ADD CHECK FOR .LNK AND .EXE FILES
+        names = ['steamcmd','steamcmd.exe','steamCMD','steamCMD.exe','steamcmd.lnk','steamCMD.lnk','steamcmd.sh','steamCMD.sh']
+        def check_file(dir):
+            if not os.path.isdir(dir):
+                log('[x] the directory where steamcmd is supposed to be located does not exists')
+                return ''
+            for name in names:
+                if os.path.isfile(os.path.join(dir, name)):
+                    return os.path.join(dir,name)
+            return ''
+                
         if self.steamcmd:
             log("[+] Checking Provided Path For steamcmd")
-            if os.path.isfile(os.path.join(self.steamcmd, "steamcmd")):
-                self.steamcmd = os.path.join(self.steamcmd, "steamcmd")
+            steamcmd = check_file(self.steamcmd)
+            if os.path.isfile(steamcmd):
+                self.steamcmd = steamcmd
                 log("[+] steamcmd Found At Provided Path")
                 return True
+            else:
+                log('[x] did not find steamcmd at steamcmd directory path')
 
         # Check working directory
-        if os.path.isfile(os.path.join(self.working_dir, "steamcmd")):
+        log('[+] checking working directory for steamcmd')
+        steamcmd = check_file(self.working_dir)
+        if os.path.isfile(steamcmd):
             log("[+] Located steamcmd")
-            self.steamcmd = os.path.join(self.working_dir, "steamcmd")
+            self.steamcmd = steamcmd
             return True
 
         return False
 
     def prep_steamcmd(self):
-        return
-
+        if not is_windows:
+            return True
+        if self.steamcmd != None:
+            if os.path.isfile(self.steamcmd):
+                if os.path.isdir(self.temp_steamcmd_dir):
+                    shutil.rmtree(self.temp_steamcmd_dir)
+                    log(f'looks like it did not clean up. removed a directory that is named {self.temp_steamcmd_dir}')
+                if os.path.isfile(self.temp_steamcmd_dir):
+                    os.remove(self.temp_steamcmd_dir)
+                    log(f'removed a file that is named {self.temp_steamcmd_dir}  because it is not supposed to exists')
+                
+                os.mkdir(self.temp_steamcmd_dir)
+                log(f'made directory called {self.temp_steamcmd_dir}')
+                
+                steamcmd = self.copy_steamcmd_to_dir(self.temp_steamcmd_dir)
+                log(f'copied existing steamcmd to {self.temp_steamcmd_dir}')
+                
+                log('running steamcmd to prep it')
+                try:
+                    subprocess.call([steamcmd,'+quit'],shell=False,cwd=self.temp_steamcmd_dir)
+                except Exception as e:
+                    log(f'error occurred while trying to run temp steamcmd {steamcmd} \n error: {e}')
+                    return False
+                return True
+            else:
+                log('steamcmd is not a file')
+        else:
+            log('steamcmd is not stored in a variable') 
+            
+        return False
+                
+    
     def update_Mods(self):
         self.build_list_of_Mods()
         successfully_installed_Mods = []
@@ -195,6 +250,26 @@ class ArkmodDownloader():
                 if d.isdigit():# check if it only contains digits so it doesn't try to download a map
                     self.installed_Mods.append(d)
             break
+        
+    def copy_steamcmd_and_files_to_dir(self,dir):
+        temp_steam_exists = os.path.isdir(self.temp_steamcmd_dir)
+        dir_exists = os.path.isdir(dir)
+        if temp_steam_exists:
+            shutil.copytree(self.temp_steamcmd_dir, dir)
+            return os.path.join(dir,os.path.basename(self.steamcmd).split('/')[-1])
+        else:
+            sys.exit(f"Error: \n temp steam directory exists? {self.temp_steamcmd_dir}") #{temp_steam_exists} \ntarget dir exists? {dir} {dir_exists}")
+    
+    def copy_steamcmd_to_dir(self,dir): ## returns the path of the copied steamcmd
+        steam_exists = os.path.isfile(self.steamcmd)
+        dir_exists = os.path.isdir(dir)
+        if steam_exists and dir_exists:
+            steamcmd_new_path = os.path.join(dir,os.path.basename(self.steamcmd).split('/')[-1])
+            shutil.copyfile(self.steamcmd, steamcmd_new_path)
+            return steamcmd_new_path
+        else:
+            sys.exit(f"Error: \nsteam exists? {self.steamcmd} {steam_exists} \ntarget dir exists? {dir} {dir_exists}")
+        
 
     def download_mod(self, modid,download_dir,preserve=False):
         preserve = preserve or self.preserve
@@ -208,7 +283,7 @@ class ArkmodDownloader():
         log("[+] Starting Download of mod " + str(modid),modid)
         args = []
         args.append(self.steamcmd)
-        args.append(f"+force_install_dir {download_dir}") # added this to get a cleaner download.
+        args.append(f"+force_install_dir '{download_dir}'") # added this to get a cleaner download.
         args.append("+login anonymous")
         args.append("+workshop_download_item")
         args.append("346110")
@@ -216,11 +291,27 @@ class ArkmodDownloader():
         if preserve:
             args.append("validate")
         args.append("+quit")
+        if os.path.isdir(self.download_dir):
+            shutil.rmtree(self.download_dir)
+        if os.path.isfile(self.download_dir):
+            os.remove(self.download_dir)
+        output = ''
+        if is_windows:# check if os is windows
+            #os.mkdir(download_dir)
+            steamcmd = self.copy_steamcmd_and_files_to_dir(download_dir)
+            args[0] = steamcmd
+            print(args)
+            output = subprocess.check_output(args,shell=False,cwd=download_dir).decode('utf-8')
+        else:
+            output = subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8')
+
         
-        output = str(subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8'))# stdout is not a sthing in win run needs to be call in win and more
-        
-        if not 'Success. Downloaded item' in output:
+
+        if 'Timeout downloading item' in output:
             return self.download_mod(modid,download_dir,True)
+        if not 'Success. Downloaded item' in output:
+            sys.exit(f'failed to download mod because of an steamcmd error check the steamcmd output to troubleshoot\n{output}')
+            
         if not os.path.isdir(download_dir):# checks if steamcmd made the download_dir if not then it failed to download
             log('failed to download mod with steamcmd | aborting mod download',modid)
             return False
