@@ -42,9 +42,10 @@ is_windows = (os.name == 'nt')
 
 class ArkmodDownloader():
 
-    def __init__(self, steamcmd, modids, working_dir, mod_update, modname, preserve=False,multithread=False):
+    def __init__(self, steamcmd, modids, working_dir, mod_update, modname, preserve=False,multithread=False,multithread_extraction=False):
         
         # I not working directory provided, check if CWD has an ARK server.
+
         self.working_dir = working_dir
         if not working_dir:
             self.working_dir_check()
@@ -56,6 +57,7 @@ class ArkmodDownloader():
             sys.exit(0)
             
         self.multithread = multithread
+        self.multithread_extraction = multithread_extraction
         self.modname = modname
         self.installed_Mods = []  # List to hold installed Mods
         self.map_names = []  # Stores map names from mod.info
@@ -64,6 +66,7 @@ class ArkmodDownloader():
         self.download_dir = os.path.join(self.working_dir,'.temp_ark_mod_downloader')
         self.temp_mod_path = os.path.join(self.download_dir, r"steamapps", r"workshop", r"content", r"346110")
         self.temp_steamcmd_dir = os.path.join(working_dir,temp_steamcmd_dir_name)
+        
         if not self.prep_steamcmd():
             return 
             log('error prepping steam. if you are on linux then this is not supposed to happen so report it(:')
@@ -73,6 +76,7 @@ class ArkmodDownloader():
             return self.update_Mods()
 
         # If any issues happen in download and extract chain this returns false
+        
         if modids:
             successfully_installed_Mods = []
             failed_to_install_Mods = []
@@ -89,22 +93,22 @@ class ArkmodDownloader():
 
             for mod in modids:
 
-                for mod in self.installed_Mods:
-                    if self.multithread:
-                        t = threading.Thread(target=download_logic, args=(mod,))
-                        t.start()
-                        threads.append(t)
-                    else:
-                        download_logic(mod)
+            
+                if self.multithread:
+                    t = threading.Thread(target=download_logic, args=(mod,))
+                    t.start()
+                    threads.append(t)
+                else:
+                    download_logic(mod)
                 
                 for t in threads:
                     t.join()
 
                 for succ_mod in successfully_installed_Mods:
-                    log(f'[+] successfully updated mod {succ_mod}')
+                    log(f'[+] successfully downloaded mod {succ_mod}')
 
                 for succ_mod in failed_to_install_Mods:
-                    log(f'[x] Failed to update mod {succ_mod}')
+                    log(f'[x] Failed to download mod {succ_mod}')
     
     def clean_up():
         return
@@ -296,14 +300,16 @@ class ArkmodDownloader():
         if os.path.isfile(self.download_dir):
             os.remove(self.download_dir)
         output = ''
-        if is_windows:# check if os is windows
-            #os.mkdir(download_dir)
-            steamcmd = self.copy_steamcmd_and_files_to_dir(download_dir)
-            args[0] = steamcmd
-            print(args)
-            output = subprocess.check_output(args,shell=False,cwd=download_dir).decode('utf-8')
-        else:
-            output = subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8')
+        try:
+            if is_windows:# check if os is windows
+                steamcmd = self.copy_steamcmd_and_files_to_dir(download_dir)
+                args[0] = steamcmd
+                output = subprocess.check_output(args,shell=False,cwd=download_dir).decode('utf-8')
+            else:
+                output = subprocess.run(args, shell=False, stdout=subprocess.PIPE).stdout.decode('utf-8')
+        except Exception as e:
+            log('error downloading mod \n'+e)
+            return False
 
         
 
@@ -329,20 +335,30 @@ class ArkmodDownloader():
         """
 
         log("[+] Extracting .z Files.",modid)
-
+        def f(file,name,curdir):  
+            src = os.path.join(curdir, file)
+            dst = os.path.join(curdir, name)
+            uncompressed = os.path.join(curdir, file + ".uncompressed_size")
+            arkit.unpack(src, dst)
+            log("[+] Extracted " + file)
+            os.remove(src)
+            if os.path.isfile(uncompressed):
+                os.remove(uncompressed)
+                
+        threads =[]
         try:
             for curdir, subdirs, files in os.walk(os.path.join(self.make_temp_mod_path(download_dir), modid, "WindowsNoEditor")):
                 for file in files:
                     name, ext = os.path.splitext(file)
                     if ext == ".z":
-                        src = os.path.join(curdir, file)
-                        dst = os.path.join(curdir, name)
-                        uncompressed = os.path.join(curdir, file + ".uncompressed_size")
-                        arkit.unpack(src, dst)
-                        #log("[+] Extracted " + file)
-                        os.remove(src)
-                        if os.path.isfile(uncompressed):
-                            os.remove(uncompressed)
+                        if self.multithread_extraction:
+                            t = threading.Thread(target=f, args=(file,name,curdir,))
+                            t.start()
+                            threads.append(t)
+                        else:
+                            f(file,name,curdir)
+            for t in threads:
+                t.join()
 
         except (arkit.UnpackException, arkit.SignatureUnpackException, arkit.CorruptUnpackException) as e:
             log("[x] Unpacking .z files failed, aborting mod install",modid)
@@ -548,6 +564,7 @@ def main():
     parser.add_argument("--preserve", default=None, action="store_true", dest="preserve", help="Don't Delete steamcmd Content Between Runs")
     parser.add_argument("--namefile", default=None, action="store_true", dest="modname", help="Create a .name File With Mods Text Name")
     parser.add_argument("--multithread", default=None, action="store_true", dest="multithread", help="multithread the download of mods so it is faster")
+    parser.add_argument("--multithread_extraction", default=None, action="store_true", dest="multithread_extraction", help="multithread the the extraction of .z files so it is faster requires more ram and cpu usage")
     args = parser.parse_args()
 
     if not args.modids and not args.mod_update:
