@@ -22,3 +22,6 @@ USAGE:
 --preserve - (Optional) - this will not remove the temp directory where to mod is to be downloaded when it stops or you restart the                             program. i don't think this is needed except if the program stopped and you want to restart it
 --multithreading - (Optional) - this will multi thread the download of the mods(in an update or a list of modids)
 
+Example windows:
+```py Ark_Mod_Downloader.py --workingdir 'C:\Program Files (x86)\Steam\steamapps\common\ARK' --update --multithread --steamcmd 'C:\Users\smelly gamer\Documents\Coding\Ark_Mod_Downloader_v2'```
+
