@@ -23,8 +23,9 @@ USAGE:
 --multithreading - (Optional) - this will multi thread the download of the mods(in an update or a list of modids)
 
 Example windows:
-```py Ark_Mod_Downloader.py --workingdir 'C:\Program Files (x86)\Steam\steamapps\common\ARK' --modids 1210379301 2924894460 --multithread --steamcmd 'C:\Users\smelly gamer\Documents\Coding\Ark_Mod_Downloader_v2'```
+```py Ark_Mod_Downloader.py --workingdir 'C:\Program Files (x86)\Steam\steamapps\common\ARK' --modids 1210379301 2924894460
+--steamcmd 'C:\Users\smelly gamer\Ark_Mod_Downloader_v2'```
 
 Example linux:
-```py Ark_Mod_Downloader.py --workingdir '/home/ark/server' --update --multithread --steamcmd '/home/ark/Ark_Mod_Downloader_v2'```
+```py Ark_Mod_Downloader.py --workingdir '/home/ark/server' --update --steamcmd '/home/ark/Ark_Mod_Downloader_v2'```
 
